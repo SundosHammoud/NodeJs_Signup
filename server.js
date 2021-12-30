@@ -5,15 +5,19 @@ const app = express();
 const bcrypt = require('bcrypt');
 const sequelize = require('./database');
 const flash = require('express-flash');
-const User = require('./Entities/User');
 const { encrypt, decrypt } = require('./Helpers/crypto');
 const passport = require('passport');
 const initPassport = require('./passport-config');
 const axios = require('axios');
+require("dotenv").config();
 
 //setting the boy parser
 const bodyParser = require('body-parser');
+const Sequelize = require('sequelize');
+const DataTypes = Sequelize.DataTypes;
 app.use(bodyParser.urlencoded({extended: true}));
+const User = require('./models/User')(sequelize, DataTypes);
+const Country = require('./models/Country')(sequelize, DataTypes);
 
 //static files
 app.use(express.static('public'));
@@ -109,7 +113,9 @@ app.post('/signUp', checkNotAuthenticated, async(req, res) => {
     
     try{    
         //check if the email is duplicated   
+        console.log('fetching a user');
         const user = await User.findOne({where : {email: req.body.email}});
+        console.log("got user");
         if(user != null)
         {
             req.flash('errorMsg', 'email already exists!');
@@ -117,17 +123,20 @@ app.post('/signUp', checkNotAuthenticated, async(req, res) => {
         }
         else
         {
+            console.log("encrypting password");
             //save the user into the DB 
             const encryptedPassword = encrypt(req.body.password).toString();
-                
-            User.create({name: req.body.name, 
+            console.log("adding user");
+            await User.create({name: req.body.name, 
                      email: req.body.email,
-                     password: encryptedPassword});
-
+                     password: encryptedPassword,
+                     countryID: 1});
+            console.log("user added");
             res.redirect('/login');
         }
         
-    }catch (e){        
+    }catch (e){ 
+        console.log(e.message);       
         res.redirect('/signUp');
     }
     
@@ -154,5 +163,5 @@ function checkNotAuthenticated(req, res, next)
     next();
     
 }
-
-app.listen(8080);
+const port = process.env.PORT || 8000
+app.listen(port);
